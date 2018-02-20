@@ -6,7 +6,19 @@ Inspired from CTF problem.
 
 ## Usage
 
-    python checker.py <image file name>
+    $ python checker.py <image file name>
+
+## Example
+
+    $ python checker.py sample/sunmoon.png
+    [*] Height in IHDR: 0x12b
+    [*] Real Height: 0x12b
+    [+] Size matches
+
+    $ python checker.py sample/sunmoon_wrong_size.png
+    [*] Height in IHDR: 0x8b
+    [*] Real Height: 0x12b
+    [!!] Wrong size in IHDR
 
 ## Description
 
