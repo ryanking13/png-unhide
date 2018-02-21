@@ -22,17 +22,15 @@ Inspired from CTF problem.
 
 ## Description
 
-These two images below are actually same images.
+<img src="sample/sunmoon.png"> <img src="sample/sunmoon_wrong_size.png">
 
-![](sample/sunmoon_wrong_size.png)
+These two PNG images above have same IDAT chunk data.
 
-![](sample/sunmoon.png)
+The only difference between two images is the height value in IHDR (and the CRC value).
 
-The difference between two image is the height value in IHDR (and the CRC of IHDR).
+Which means, by manipulating the height value in IHDR, one can hide extra data ( or maybe a malicious code ) from PNG image.
 
-This can be used for a steganography method.
-
-Therefore, this program checks whether the height value in IHDR is correct, by directly calculating size from image data(IDAT) section.
+Therefore, this program checks whether the height value in IHDR is uncorrupted, by directly calculating height of the image from IDAT section.
 
 ### Requirements
 
