@@ -16,9 +16,11 @@ Inspired from CTF problem.
     [+] Size matches
 
     $ python checker.py sample/sunmoon_wrong_size.png
-    [*] Height in IHDR: 0x8b
+    [*] Height in the IHDR: 0x8b
     [*] Real Height: 0x12b
-    [!!] Wrong size in IHDR
+    [!!] Wrong size in the IHDR
+    Automatically fix the IHDR? (Y/N)Y
+    [*] Fixed file saved to sample/sunmoon_wrong_size_fixed.png
 
 ## Description
 

@@ -7,6 +7,28 @@ CHUNK_SIZE_BYTES = 4
 CHUNK_NAME_BYTES = 4
 CHUNK_CRC_BYTES = 4
 
+def calc_crc(img, ihdr_start):
+    ''' https://www.w3.org/TR/PNG/#D-CRCAppendix '''
+
+    chunk = img[ihdr_start + CHUNK_SIZE_BYTES:ihdr_start + CHUNK_SIZE_BYTES + CHUNK_NAME_BYTES + 13]
+
+    crc_table = []
+    for n in range(256):
+        c = n
+        for k in range(8):
+            if (c & 1) == 1:
+                c = 0xEDB88320 ^ ((c>>1) & 0x7fffffff)
+            else:
+                c = ((c>>1) & 0x7fffffff)
+
+        crc_table.append(c)
+
+    c = 0xffffffff
+    for byte in chunk:
+        c = crc_table[(c ^ byte) & 255] ^ ((c>>8) & 0xffffff)
+
+    return c ^ 0xffffffff
+
 # calculates length of each scanline (row)
 def calculate_scanline_length(ihdr_info):
 
@@ -29,6 +51,8 @@ def calculate_scanline_length(ihdr_info):
 
 def analyze_ihdr(img, start):
 
+    start = start + CHUNK_SIZE_BYTES + CHUNK_NAME_BYTES # content start index
+
     ihdr_info = {
         'width': int.from_bytes(img[start:start+4], byteorder='big'),
         'height': int.from_bytes(img[start+4:start+8], byteorder='big'),
@@ -36,7 +60,8 @@ def analyze_ihdr(img, start):
         'colortype': int.from_bytes(img[start+9:start+10], byteorder='big'),
         'compression': int.from_bytes(img[start+10:start:11], byteorder='big'),
         'filter': int.from_bytes(img[start+11:start+12], byteorder='big'),
-        'interlaced': int.from_bytes(img[start+12:start+13], byteorder='big')
+        'interlaced': int.from_bytes(img[start+12:start+13], byteorder='big'),
+        'crc': int.from_bytes(img[start+13:start+17], byteorder='big')
     }
 
     return ihdr_info
@@ -47,14 +72,16 @@ def main():
         print('[*] usage: python {} <image file name>'.format(sys.argv[0]))
         exit(-1)
 
-    img = open(sys.argv[1], 'rb').read()
+    file_name = sys.argv[1]
+    img = open(file_name, 'rb').read()
 
     if img[:8] != PNG_SIGNATURE:
         print('Input file is not PNG')
         exit(-1)
 
     # analyze IHDR chunk
-    ihdr_info = analyze_ihdr(img, img.index(b'IHDR') + CHUNK_NAME_BYTES)
+    ihdr_start = img.index(b'IHDR') - CHUNK_SIZE_BYTES
+    ihdr_info = analyze_ihdr(img, ihdr_start)
 
     # find first IDAT chunk
     idat_start = img.index(b'IDAT') - CHUNK_SIZE_BYTES
@@ -91,13 +118,35 @@ def main():
     scanline_length = calculate_scanline_length(ihdr_info)
     real_height = len(decompressed_img) // scanline_length
 
-    print('[*] Height in IHDR: {}'.format(hex(ihdr_info['height'])))
+    print('[*] Height in the IHDR: {}'.format(hex(ihdr_info['height'])))
     print('[*] Real Height: {}'.format(hex(real_height)))
 
     if ihdr_info['height'] == real_height:
         print('[+] Size matches')
     else:
-        print('[!!] Wrong size in IHDR')
+        print('[!!] Wrong size in the IHDR')
+        choice = input('Automatically fix the IHDR? (Y/N)').upper()
+
+        # fix height and crc and save image
+        if choice == 'Y':
+            height_start = ihdr_start + CHUNK_SIZE_BYTES + CHUNK_NAME_BYTES + 4
+            # content length of IHDR is always 13
+            crc_start = ihdr_start + CHUNK_SIZE_BYTES + CHUNK_NAME_BYTES + 13
+
+            fixed_img = bytearray(img)
+            real_height_bytes = real_height.to_bytes(4, byteorder='big')
+            fixed_img[height_start:height_start+4] = real_height_bytes
+
+            real_crc = calc_crc(fixed_img, ihdr_start)
+            real_crc_bytes = real_crc.to_bytes(CHUNK_CRC_BYTES, byteorder='big')
+
+            fixed_img[crc_start:crc_start+CHUNK_CRC_BYTES] = real_crc_bytes
+
+            # save fixed image
+            fixed_file_name = file_name[:file_name.rindex('.')] + '_fixed.png'
+            with open(fixed_file_name, 'wb') as f:
+                f.write(bytes(fixed_img))
+                print('[*] Fixed file saved to {}'.format(fixed_file_name))
 
 
 if __name__ == '__main__':
