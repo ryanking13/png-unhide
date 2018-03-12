@@ -7,37 +7,40 @@ CHUNK_SIZE_BYTES = 4
 CHUNK_NAME_BYTES = 4
 CHUNK_CRC_BYTES = 4
 
+
 def calc_crc(img, ihdr_start):
     ''' https://www.w3.org/TR/PNG/#D-CRCAppendix '''
 
-    chunk = img[ihdr_start + CHUNK_SIZE_BYTES:ihdr_start + CHUNK_SIZE_BYTES + CHUNK_NAME_BYTES + 13]
+    chunk = img[ihdr_start + CHUNK_SIZE_BYTES:
+                ihdr_start + CHUNK_SIZE_BYTES + CHUNK_NAME_BYTES + 13]
 
     crc_table = []
     for n in range(256):
         c = n
         for k in range(8):
             if (c & 1) == 1:
-                c = 0xEDB88320 ^ ((c>>1) & 0x7fffffff)
+                c = 0xEDB88320 ^ ((c >> 1) & 0x7fffffff)
             else:
-                c = ((c>>1) & 0x7fffffff)
+                c = ((c >> 1) & 0x7fffffff)
 
         crc_table.append(c)
 
     c = 0xffffffff
     for byte in chunk:
-        c = crc_table[(c ^ byte) & 255] ^ ((c>>8) & 0xffffff)
+        c = crc_table[(c ^ byte) & 255] ^ ((c >> 8) & 0xffffff)
 
     return c ^ 0xffffffff
+
 
 # calculates length of each scanline (row)
 def calculate_scanline_length(ihdr_info):
 
     colortypes = {
-        0: 1, # greyscale
-        2: 3, # RGB
-        3: -1, # PLTE # TODO: implement
-        4: 2, # greyscale + alpha
-        6: 4, # RGB + alpha
+        0: 1,  # greyscale
+        2: 3,  # RGB
+        3: -1,  # PLTE # TODO: implement
+        4: 2,  # greyscale + alpha
+        6: 4,  # RGB + alpha
     }
 
     if ihdr_info['colortype'] == 3:
@@ -49,9 +52,10 @@ def calculate_scanline_length(ihdr_info):
 
     return bits_per_scanline // 8 + 1
 
+
 def analyze_ihdr(img, start):
 
-    start = start + CHUNK_SIZE_BYTES + CHUNK_NAME_BYTES # content start index
+    start = start + CHUNK_SIZE_BYTES + CHUNK_NAME_BYTES  # content start index
 
     ihdr_info = {
         'width': int.from_bytes(img[start:start+4], byteorder='big'),
@@ -65,6 +69,7 @@ def analyze_ihdr(img, start):
     }
 
     return ihdr_info
+
 
 def main():
 
@@ -94,7 +99,8 @@ def main():
     while True:
 
         # get chunk size
-        idat_content_size = int.from_bytes(img[idat_start:idat_start+CHUNK_SIZE_BYTES], byteorder='big')
+        idat_content_size = int.from_bytes(img[idat_start:idat_start + CHUNK_SIZE_BYTES],
+                                           byteorder='big')
 
         name_start = idat_start + CHUNK_SIZE_BYTES
         name_end = name_start + CHUNK_NAME_BYTES
@@ -138,7 +144,8 @@ def main():
             fixed_img[height_start:height_start+4] = real_height_bytes
 
             real_crc = calc_crc(fixed_img, ihdr_start)
-            real_crc_bytes = real_crc.to_bytes(CHUNK_CRC_BYTES, byteorder='big')
+            real_crc_bytes = real_crc.to_bytes(CHUNK_CRC_BYTES,
+                                               byteorder='big')
 
             fixed_img[crc_start:crc_start+CHUNK_CRC_BYTES] = real_crc_bytes
 
