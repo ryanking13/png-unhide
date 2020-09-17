@@ -1,4 +1,4 @@
-# PNG size corruption checker
+# png-unhide
 
 Simple python program which checks PNG file's size in IHDR is correct.
 
